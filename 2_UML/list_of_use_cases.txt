@@ -6,3 +6,5 @@ Consult Contextual Memory (Last 3 messages)
 Execute Task
 Log Execution (Audit Trail)
 Mask Sensitive Output
+Trigger Self-Correction (Analyze Error Logs)
+Query System Metrics (Read-Only)
