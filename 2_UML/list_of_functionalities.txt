@@ -4,3 +4,6 @@ Administrator
     -Query System Metrics (Read-Only)
     -Manage Schedule/Reminders
     -Submit Natural Language Command
+General User
+    -Query System Metrics (Read-Only)
+    -Manage Schedule/Reminders
