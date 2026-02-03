@@ -1,0 +1,14 @@
+Submit Natural Language Command
+Authenticate User
+Parse Intent & Entities (NLP Engine)
+Provide Fallback Response
+Consult Contextual Memory (Last 3 messages)
+Execute Task
+Log Execution (Audit Trail)
+Mask Sensitive Output
+Trigger Self-Correction (Analyze Error Logs)
+Query System Metrics (Read-Only)
+Manage Schedule/Reminders
+Execute Write-Action (e.g., Restart Service)
+Register External Script
+Request Confirmation
