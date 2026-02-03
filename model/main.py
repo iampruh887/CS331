@@ -43,3 +43,21 @@ def write_log(tool_used: str, user_input: str, response: str):
     except Exception as e:
         logging.error(f"Failed to write log: {e}")
 
+#tools
+def gettime() -> str:
+    """
+    Returns the current server time in a structured JSON format.
+    Use this tool when the user asks for the current time, date, or timestamp.
+    
+    Returns:
+        str: JSON string with current time information
+    """
+    now = datetime.datetime.now()
+    result = {
+        "timestamp": now.isoformat(),
+        "date": now.strftime("%Y-%m-%d"),
+        "time": now.strftime("%H:%M:%S"),
+        "day_of_week": now.strftime("%A"),
+        "timezone": "Local"
+    }
+    return json.dumps(result)
