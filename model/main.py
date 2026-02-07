@@ -235,3 +235,36 @@ async def run_single_query(user_input: str) -> str:
             final_response = event.text
     
     response_text = "No response received from agent."
+    
+    try:
+        session = await session_service.get_session(
+            app_name=app_name,
+            session_id=session_id,
+            user_id=user_id
+        )
+        
+        if session and session.messages and len(session.messages) > 0:
+            last_message = session.messages[-1]
+            if last_message.role == "model" and last_message.parts and len(last_message.parts) > 0:
+                # Extract text from the Part object
+                part = last_message.parts[0]
+                if hasattr(part, 'text'):
+                    response_text = part.text.strip()
+    except Exception:
+        pass
+    
+    # Fallback to final_response if session didn't work
+    if response_text == "No response received from agent." and final_response:
+        if isinstance(final_response, str):
+            response_text = final_response.strip()
+        elif hasattr(final_response, 'parts') and len(final_response.parts) > 0:
+            if hasattr(final_response.parts[0], 'text'):
+                response_text = final_response.parts[0].text.strip()
+        elif hasattr(final_response, 'text'):
+            response_text = final_response.text.strip()
+    
+    # Log the interaction
+    tool_name = tools_used[0] if tools_used else "conversation"
+    write_log(tool_name, user_input, response_text)
+    
+    return response_text
