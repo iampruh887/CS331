@@ -178,3 +178,60 @@ You: "Hi! How can I help you today?"
 Remember: Be helpful, accurate, and concise. Parse tool outputs and present them naturally.""",
     tools=[gettime, get_system_metrics]
 )
+
+async def run_single_query(user_input: str) -> str:
+    """Execute a single query and return the response."""
+    app_name = "parsing_engine_app"
+    session_id = f"cli_session_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    user_id = "cli_user"
+    session_service = InMemorySessionService()
+    
+    # Create the session
+    try:
+        await session_service.create_session(
+            app_name=app_name,
+            session_id=session_id,
+            user_id=user_id
+        )
+    except Exception:
+        pass  
+    
+    runner = Runner(
+        app_name=app_name,
+        agent=root_agent,
+        session_service=session_service
+    )
+    
+    # Wrap the input in a Content object
+    user_msg = types.Content(
+        role="user",
+        parts=[types.Part(text=user_input)]
+    )
+    
+    tools_used = []
+    
+    final_response = None
+    async for event in runner.run_async(
+        session_id=session_id,
+        user_id=user_id,
+        new_message=user_msg
+    ):
+        # Track tool usage - check multiple possible attributes
+        if hasattr(event, 'tool_call') and event.tool_call:
+            tool_name = event.tool_call.name if hasattr(event.tool_call, 'name') else 'unknown'
+            tools_used.append(tool_name)
+        elif hasattr(event, 'function_call') and event.function_call:
+            tool_name = event.function_call.name if hasattr(event.function_call, 'name') else 'unknown'
+            tools_used.append(tool_name)
+        elif hasattr(event, 'type') and 'tool' in str(event.type).lower():
+            # Generic tool event detection
+            if hasattr(event, 'name'):
+                tools_used.append(event.name)
+        
+        # Capture content from events
+        if hasattr(event, 'content') and event.content:
+            final_response = event.content
+        elif hasattr(event, 'text') and event.text:
+            final_response = event.text
+    
+    response_text = "No response received from agent."
