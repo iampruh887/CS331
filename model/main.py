@@ -316,3 +316,23 @@ async def interactive_mode():
             )
             
             print("Processing...\n")
+            # Track tools used
+            tools_used = []
+            final_response = None
+            
+            async for event in runner.run_async(
+                session_id=session_id,
+                user_id=user_id,
+                new_message=user_msg
+            ):
+                # Track tool usage
+                if hasattr(event, 'tool_call') and event.tool_call:
+                    tools_used.append(event.tool_call.name if hasattr(event.tool_call, 'name') else 'unknown')
+                
+                if hasattr(event, 'content') and event.content:
+                    final_response = event.content
+                elif hasattr(event, 'text') and event.text:
+                    final_response = event.text
+            
+            response_text = "No response received from agent."
+            
