@@ -298,3 +298,21 @@ async def interactive_mode():
         agent=root_agent,
         session_service=session_service
     )
+    
+    while True:
+        try:
+            user_input = input("\nUser: ").strip()
+            
+            if not user_input:
+                continue
+                
+            if user_input.lower() in ["exit", "quit", "bye"]:
+                print("\nGoodbye!")
+                break
+            
+            user_msg = types.Content(
+                role="user",
+                parts=[types.Part(text=user_input)]
+            )
+            
+            print("Processing...\n")
