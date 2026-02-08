@@ -378,3 +378,19 @@ async def interactive_mode():
         except Exception as e:
             print(f"\n Error: {str(e)}")
             print("\nContinuing...\n")
+            
+async def main():
+    """Main entry point - handles CLI arguments or interactive mode."""
+    if len(sys.argv) > 1:
+        # CLI mode - single query
+        if sys.argv[1] in ["-h", "--help"]:
+            print("Usage:")
+            print("  python main.py <prompt>           # Single query mode")
+            print("  python main.py                    # Interactive mode")
+            print("  python main.py --help             # Show this help")
+            print("\nExamples:")
+            print("  python main.py 'What time is it?'")
+            print("  python main.py 'Show me system metrics'")
+            print(f"\nLogs are stored in: {LOG_FILE.absolute()}")
+            return
+        
