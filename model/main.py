@@ -399,3 +399,10 @@ async def main():
     else:
         # Interactive mode
         await interactive_mode()
+        
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nProgram terminated.")
