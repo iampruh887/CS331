@@ -12,14 +12,13 @@ from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from google.genai import types  # Used for constructing user messages
+from google.genai import types
 
 logging.basicConfig(level=logging.WARNING)  
 LOG_FILE = Path("agent_logs.json")
 
 
 def write_log(tool_used: str, user_input: str, response: str):
-    """Write a log entry to the JSON log file."""
     try:
         logs = []
         if LOG_FILE.exists():
@@ -43,10 +42,9 @@ def write_log(tool_used: str, user_input: str, response: str):
     except Exception as e:
         logging.error(f"Failed to write log: {e}")
 
-#tools
+
 def gettime() -> str:
     """
-     This tool/function must always be used to obtain any query relating to current time.
     Returns the current server time in a structured JSON format.
     Use this tool when the user asks for the current time, date, or timestamp.
     
@@ -67,29 +65,25 @@ def gettime() -> str:
 def get_system_metrics() -> str:
     """
     Returns current system metrics in a structured JSON format.
-    Use this tool when the user asks about system performance, resource usage, or system status.
+    Use this tool when the user asks about system performance, CPU, memory, disk usage, or system status.
     
     Returns:
         str: JSON string containing system metrics
     """
     try:
-        # Quick CPU check (no interval for speed)
-        cpu_percent = psutil.cpu_percent(interval=0.1)
+        cpu_percent = psutil.cpu_percent(interval=0.5)
         cpu_count_logical = psutil.cpu_count(logical=True)
         cpu_count_physical = psutil.cpu_count(logical=False)
         
-        # Memory Information
         memory = psutil.virtual_memory()
-        
-        # Disk Information
         disk = psutil.disk_usage('/')
         
-        # System Information
         boot_time = datetime.datetime.fromtimestamp(psutil.boot_time())
         uptime_seconds = (datetime.datetime.now() - boot_time).total_seconds()
         
         metrics = {
             "status": "success",
+            "timestamp": datetime.datetime.now().isoformat(),
             "system": {
                 "platform": platform.system(),
                 "hostname": platform.node(),
@@ -114,16 +108,16 @@ def get_system_metrics() -> str:
             }
         }
         
-        return json.dumps(metrics)
+        return json.dumps(metrics, indent=2)
         
     except Exception as e:
         return json.dumps({
             "status": "error",
-            "error": str(e)
+            "error": str(e),
+            "error_type": type(e).__name__
         })
 
 
-#defining the llm model and its endpoint with ollama
 llm_model = LiteLlm(
     model="ollama_chat/phi4-mini",
     api_base="http://localhost:11434"
@@ -133,61 +127,41 @@ root_agent = Agent(
     name="parsing_engine",
     model=llm_model,
     description="An intelligent assistant that processes user requests and provides accurate, helpful responses.",
-    instruction="""You are a precise and efficient AI assistant. Your role is to understand user intent and respond appropriately.
+    instruction="""You are a precise AI assistant with access to specific tools. You MUST use these tools to get accurate information.
 
-CORE PRINCIPLES:
-1. Be direct and concise - avoid unnecessary elaboration
-2. Use tools when appropriate to provide accurate information
-3. Parse tool outputs (which are in JSON format) and present them naturally to users
-4. Stay focused on the user's actual question
+MANDATORY TOOL USAGE:
+1. Time/Date queries → CALL gettime() function
+   - "what time", "current time", "what's the time", "time now"
+   - "what date", "current date", "today's date"
+   
+2. System queries → CALL get_system_metrics() function
+   - "system stats", "server stats", "system metrics"
+   - "CPU usage", "memory usage", "disk space"
+   - "how is the system", "system performance"
 
-TOOL USAGE GUIDELINES:
+DO NOT GUESS OR MAKE UP:
+- Current time or date (always call gettime)
+- System performance data (always call get_system_metrics)
 
-When user asks about TIME/DATE:
-- Use 'gettime' tool
-- Parse the JSON response and present it naturally
-- Example: "It's 10:30 AM on Monday, February 9th, 2026"
+WORKFLOW:
+1. Identify if query needs a tool
+2. Call the appropriate function
+3. Parse the JSON response
+4. Present result naturally to user
 
-When user asks about SYSTEM PERFORMANCE/METRICS:
-- Use 'get_system_metrics' tool
-- Parse the JSON response and highlight key information
-- Example: "Your system is running well. CPU usage is at 15%, memory usage is 45% (7.2GB used of 16GB), and disk usage is 60%."
+For general conversation, respond directly without tools.
 
-For GENERAL CONVERSATION:
-- Respond naturally and helpfully
-- Keep responses brief and relevant
-- Don't mention tools or technical details unless asked
-
-RESPONSE STYLE:
-- Direct and conversational
-- No unnecessary preambles like "Based on the information..." or "According to..."
-- Present information as if you know it directly
-- Use natural language, not technical jargon
-- Keep responses under 3 sentences when possible
-
-EXAMPLES:
-
-User: "What time is it?"
-You: "It's 10:30:45 PM on Sunday, February 9th, 2026."
-
-User: "How's my system doing?"
-You: "Your system is running smoothly. CPU is at 12%, memory usage is 45% (7.2GB of 16GB), and you have 150GB free disk space."
-
-User: "Hello"
-You: "Hi! How can I help you today?"
-
-Remember: Be helpful, accurate, and concise. Parse tool outputs and present them naturally.""",
+Response style: Direct, natural, concise (2-3 sentences max).""",
     tools=[gettime, get_system_metrics]
 )
 
+
 async def run_single_query(user_input: str) -> str:
-    """Execute a single query and return the response."""
     app_name = "parsing_engine_app"
     session_id = f"cli_session_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     user_id = "cli_user"
     session_service = InMemorySessionService()
     
-    # Create the session
     try:
         await session_service.create_session(
             app_name=app_name,
@@ -195,7 +169,7 @@ async def run_single_query(user_input: str) -> str:
             user_id=user_id
         )
     except Exception:
-        pass  
+        pass
     
     runner = Runner(
         app_name=app_name,
@@ -203,75 +177,57 @@ async def run_single_query(user_input: str) -> str:
         session_service=session_service
     )
     
-    # Wrap the input in a Content object
     user_msg = types.Content(
         role="user",
         parts=[types.Part(text=user_input)]
     )
     
     tools_used = []
+    response_text = ""
     
-    final_response = None
     async for event in runner.run_async(
         session_id=session_id,
         user_id=user_id,
         new_message=user_msg
     ):
-        # Track tool usage - check multiple possible attributes
+        print(f"[DEBUG] Event type: {type(event).__name__}")
+        print(f"[DEBUG] Event attributes: {dir(event)}")
+        
         if hasattr(event, 'tool_call') and event.tool_call:
-            tool_name = event.tool_call.name if hasattr(event.tool_call, 'name') else 'unknown'
+            tool_name = getattr(event.tool_call, 'name', 'unknown')
             tools_used.append(tool_name)
+            print(f"[DEBUG] Tool call detected: {tool_name}")
         elif hasattr(event, 'function_call') and event.function_call:
-            tool_name = event.function_call.name if hasattr(event.function_call, 'name') else 'unknown'
+            tool_name = getattr(event.function_call, 'name', 'unknown')
             tools_used.append(tool_name)
-        elif hasattr(event, 'type') and 'tool' in str(event.type).lower():
-            # Generic tool event detection
-            if hasattr(event, 'name'):
-                tools_used.append(event.name)
+            print(f"[DEBUG] Function call detected: {tool_name}")
         
-        # Capture content from events
-        if hasattr(event, 'content') and event.content:
-            final_response = event.content
+        if hasattr(event, 'content'):
+            print(f"[DEBUG] Event has content: {type(event.content)}")
+            if hasattr(event.content, 'parts'):
+                for part in event.content.parts:
+                    print(f"[DEBUG] Part type: {type(part).__name__}, attributes: {dir(part)}")
+                    if hasattr(part, 'text') and part.text:
+                        response_text = part.text
+                        print(f"[DEBUG] Found text in part: {part.text[:100]}")
+            elif isinstance(event.content, str):
+                response_text = event.content
+                print(f"[DEBUG] Content is string: {event.content[:100]}")
         elif hasattr(event, 'text') and event.text:
-            final_response = event.text
+            response_text = event.text
+            print(f"[DEBUG] Event has text: {event.text[:100]}")
     
-    response_text = "No response received from agent."
+    if not response_text:
+        response_text = "No response received from agent."
     
-    try:
-        session = await session_service.get_session(
-            app_name=app_name,
-            session_id=session_id,
-            user_id=user_id
-        )
-        
-        if session and session.messages and len(session.messages) > 0:
-            last_message = session.messages[-1]
-            if last_message.role == "model" and last_message.parts and len(last_message.parts) > 0:
-                # Extract text from the Part object
-                part = last_message.parts[0]
-                if hasattr(part, 'text'):
-                    response_text = part.text.strip()
-    except Exception:
-        pass
-    
-    # Fallback to final_response if session didn't work
-    if response_text == "No response received from agent." and final_response:
-        if isinstance(final_response, str):
-            response_text = final_response.strip()
-        elif hasattr(final_response, 'parts') and len(final_response.parts) > 0:
-            if hasattr(final_response.parts[0], 'text'):
-                response_text = final_response.parts[0].text.strip()
-        elif hasattr(final_response, 'text'):
-            response_text = final_response.text.strip()
-    
-    # Log the interaction
+    response_text = response_text.strip() if response_text else "No response received from agent."
     tool_name = tools_used[0] if tools_used else "conversation"
     write_log(tool_name, user_input, response_text)
     
     return response_text
 
+
 async def interactive_mode():
-    """Run the agent in interactive mode."""
     print(f"Agent '{root_agent.name}' initialized")
     print(f"Model: {llm_model.model}")
     print(f"Tools: {[tool.__name__ for tool in root_agent.tools]}")
@@ -317,73 +273,57 @@ async def interactive_mode():
             )
             
             print("Processing...\n")
-            # Track tools used
             tools_used = []
-            final_response = None
+            response_text = ""
             
             async for event in runner.run_async(
                 session_id=session_id,
                 user_id=user_id,
                 new_message=user_msg
             ):
-                # Track tool usage
                 if hasattr(event, 'tool_call') and event.tool_call:
-                    tools_used.append(event.tool_call.name if hasattr(event.tool_call, 'name') else 'unknown')
+                    tool_name = getattr(event.tool_call, 'name', 'unknown')
+                    tools_used.append(tool_name)
+                    print(f"[Tool Called: {tool_name}]")
+                elif hasattr(event, 'function_call') and event.function_call:
+                    tool_name = getattr(event.function_call, 'name', 'unknown')
+                    tools_used.append(tool_name)
+                    print(f"[Function Called: {tool_name}]")
                 
-                if hasattr(event, 'content') and event.content:
-                    final_response = event.content
+                if hasattr(event, 'content'):
+                    if hasattr(event.content, 'parts'):
+                        for part in event.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                response_text = part.text
+                    elif isinstance(event.content, str):
+                        response_text = event.content
                 elif hasattr(event, 'text') and event.text:
-                    final_response = event.text
+                    response_text = event.text
             
-            response_text = "No response received from agent."
+            if not response_text:
+                response_text = "No response received from agent."
             
-            try:
-                session = await session_service.get_session(
-                    app_name=app_name,
-                    session_id=session_id,
-                    user_id=user_id
-                )
-                
-                if session and session.messages and len(session.messages) > 0:
-                    last_message = session.messages[-1]
-                    if last_message.role == "model" and last_message.parts and len(last_message.parts) > 0:
-                        part = last_message.parts[0]
-                        if hasattr(part, 'text'):
-                            response_text = part.text.strip()
-            except Exception:
-                pass
+            response_text = response_text.strip()
             
-            if response_text == "No response received from agent." and final_response:
-                if isinstance(final_response, str):
-                    response_text = final_response.strip()
-                elif hasattr(final_response, 'parts') and len(final_response.parts) > 0:
-                    if hasattr(final_response.parts[0], 'text'):
-                        response_text = final_response.parts[0].text.strip()
-                elif hasattr(final_response, 'text'):
-                    response_text = final_response.text.strip()
-            
-            # Display response
             if response_text != "No response received from agent.":
-                print(f" Agent: {response_text}")
+                print(f"Agent: {response_text}")
                 print("-"*60)
             else:
                 print("No response received from agent.")
             
-            # Log the interaction
             tool_name = tools_used[0] if tools_used else "conversation"
             write_log(tool_name, user_input, response_text)
                 
         except KeyboardInterrupt:
-            print("\n Session interrupted. Goodbye!")
+            print("\nSession interrupted. Goodbye!")
             break
         except Exception as e:
-            print(f"\n Error: {str(e)}")
+            print(f"\nError: {str(e)}")
             print("\nContinuing...\n")
             
+
 async def main():
-    """Main entry point - handles CLI arguments or interactive mode."""
     if len(sys.argv) > 1:
-        # CLI mode - single query
         if sys.argv[1] in ["-h", "--help"]:
             print("Usage:")
             print("  python main.py <prompt>           # Single query mode")
@@ -398,7 +338,6 @@ async def main():
         response = await run_single_query(user_prompt)
         print(response)
     else:
-        # Interactive mode
         await interactive_mode()
         
 
