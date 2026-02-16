@@ -17,3 +17,12 @@ Based on the SRS and Class Specifications, the key application components in the
 * **Script Registry:**
     * **Role:** Plugin Manager.
     * **Function:** Manages the registration and metadata of external scripts (Python/Bash) that the system can execute.
+* **Audit Logger:**
+    * **Role:** Compliance Recorder.
+    * **Function:** Maintains an immutable record of every action, including User ID, Command, Timestamp, and Result.
+* **Self-Correction Engine:**
+    * **Role:** Automated Troubleshooter (Novelty Feature).
+    * **Function:** Analyzes error logs when a task fails and automatically suggests potential fixes to the user.
+* **Calendar Integration:**
+    * **Role:** External API Handler.
+    * **Function:** Interfaces with external Calendar APIs to check availability and schedule meetings based on natural language requests.
