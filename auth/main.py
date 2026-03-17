@@ -1,9 +1,9 @@
 from datetime import timedelta
 from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from models import UserCreate, UserLogin, User, Token, TokenData
 from auth import (
-    hash_password, 
     verify_password, 
     create_access_token, 
     get_current_user
@@ -13,6 +13,19 @@ from config import get_settings
 
 app = FastAPI(title="Nexus Auth API", version="1.0.0")
 settings = get_settings()
+allowed_origins = [
+    origin.strip()
+    for origin in settings.AUTH_ALLOWED_ORIGINS.split(",")
+    if origin.strip()
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register(user: UserCreate):
