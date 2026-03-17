@@ -1,3 +1,6 @@
 google-adk
 psutil
 litellm
+pathway
+sentence-transformers
+numpy
