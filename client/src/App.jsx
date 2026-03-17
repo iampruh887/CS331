@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import "./App.css";
-// import { sendChatMessage } from "./api/chatApi";
+import { ScriptsSidebar } from "./components/ScriptsSidebar";
+
+const API_BASE_URL = "http://localhost:8000";
 
 function App() {
-  const [messages, setMessages] = useState([]); // { role: 'user'|'assistant', text }
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesRef = useRef(null);
@@ -20,13 +22,28 @@ function App() {
     setLoading(true);
 
     try {
-      // placeholder for actual API call
-      await new Promise((r) => setTimeout(r, 500)); // small delay
-      const reply = `Fake bot reply to: "${text}" (backend not connected yet)`;
-      const botMsg = { role: "assistant", text: reply };
+      const response = await fetch(`${API_BASE_URL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const botMsg = { role: "assistant", text: data.reply };
       setMessages((prev) => [...prev, botMsg]);
     } catch (err) {
-      console.error(err);
+      console.error("Chat error:", err);
+      const errorMsg = {
+        role: "assistant",
+        text: "Sorry, I encountered an error. Please try again.",
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setLoading(false);
     }
@@ -71,6 +88,7 @@ function App() {
 
   return (
     <div className="app">
+      <ScriptsSidebar />
       <main className="chat-container">
         <header className="app-header engine-card">
           <h1>Nexus Chatbot</h1>
