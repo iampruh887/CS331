@@ -1,0 +1,68 @@
+[
+  {
+    "TOOL_USED": "conversation",
+    "TIMESTAMP": "2026-02-17T09:34:14.804003",
+    "USER_INPUT": "Hi, what is the time?",
+    "RESPONSE": "{\"name\": \"gettime\"}"
+  },
+  {
+    "TOOL_USED": "conversation",
+    "TIMESTAMP": "2026-02-17T09:37:28.790432",
+    "USER_INPUT": "Hi, what is the time?",
+    "RESPONSE": "{\"name\": \"gettime\"}"
+  },
+  {
+    "timestamp": "2026-02-17T09:39:42.626247",
+    "tool_used": "gettime",
+    "user_input": "Hi, what is the time?",
+    "response": "{ \"name\": \"response\" }"
+  },
+  {
+    "timestamp": "2026-02-17T09:40:01.802657",
+    "tool_used": "get_system_metrics",
+    "user_input": "get me server stats",
+    "response": "{\"name\": \"response\"}"
+  },
+  {
+    "timestamp": "2026-03-17T08:42:32.141464",
+    "tool_used": "get_system_metrics",
+    "user_input": "Hi, Could you get me the System metrics/",
+    "response": "Sure! Here are the system metrics:\n\n- **Platform**: Linux\n- **Uptime**: 0.41 hours\n- **CPU Usage**: 7.8%\n- **Memory (RAM)**: \n  - Total: 15.04 GB\n  - Used: 6.65 GB (44.2% usage)\n  - Available: 8.39 GB\n- **Disk Space**:\n  - Total: 467.35 GB\n  - Used: 228.55 GB (51.5% usage)\n  - Free: 214.98 GB\n\nThe system is running smoothly!"
+  },
+  {
+    "timestamp": "2026-03-17T08:50:40.811912",
+    "tool_used": "gettime",
+    "user_input": "Hi, what is the time right now?",
+    "response": "The current time is 08:50 AM on Tuesday, March 17, 2026."
+  },
+  {
+    "timestamp": "2026-03-17T08:50:55.673040",
+    "tool_used": "none",
+    "user_input": "Hi, who are you?",
+    "response": "I'm assistant, your friendly AI helper! How can I assist you today?"
+  },
+  {
+    "timestamp": "2026-03-17T08:51:26.731467",
+    "tool_used": "get_system_metrics",
+    "user_input": "can you tell me the uptime of the system?",
+    "response": "The system has been up for approximately 0.56 hours. Here are some details:\n\n- CPU Usage: 2.1%\n- Memory Usage: 44.0%\n- Disk Usage: 51.5%\n\nLet me know if you need more information!"
+  },
+  {
+    "timestamp": "2026-03-17T08:51:43.804989",
+    "tool_used": "none",
+    "user_input": "okay",
+    "response": "Hello! How can I assist you today? Do you need information about the current time or system performance?"
+  },
+  {
+    "timestamp": "2026-03-17T08:51:52.880037",
+    "tool_used": "none",
+    "user_input": "No not right now!",
+    "response": "Okay! If you need anything in the future, feel free to ask."
+  },
+  {
+    "timestamp": "2026-03-17T09:19:36.957829",
+    "tool_used": "get_system_metrics",
+    "user_input": "get the system metrics",
+    "response": "Sure! Here are the current system metrics:\n\n- **Uptime**: About 1 hour and 3 minutes.\n- **CPU Usage**: 5.7%.\n- **Memory (RAM)**: \n  - Total: 15.04 GB\n  - Used: 6.78 GB (45.1% usage)\n  - Available: 8.26 GB\n- **Disk Space**:\n  - Total: 467.35 GB\n  - Used: 228.56 GB (51.5% usage)\n  - Free: 214.98 GB\n\nThe system is running well!"
+  }
+]
