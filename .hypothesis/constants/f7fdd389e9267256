@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/auth/config.py
+# hypothesis_version: 6.151.9
+
+['.env', '1.0.0', 'HS256', 'Nexus Auth API', 'ignore']

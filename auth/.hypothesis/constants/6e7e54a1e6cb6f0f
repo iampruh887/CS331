@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/auth/auth.py
+# hypothesis_version: 6.151.9
+
+['ADMIN', 'Bearer', 'GENERAL', 'User not found', 'WWW-Authenticate', 'email', 'exp', 'is_active', 'role', 'sub', 'token', 'utf-8']

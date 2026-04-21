@@ -428,6 +428,37 @@
   }
 }
 
+.confirmation-dialog {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  background: rgba(6, 78, 59, 0.92);
+  border-radius: 14px;
+  padding: 14px;
+  z-index: 10;
+  box-shadow: 0 10px 25px rgba(1, 6, 24, 0.6);
+}
+
+.confirmation-content {
+  display: grid;
+  gap: 12px;
+}
+
+.confirmation-message {
+  margin: 0;
+  color: #ccfbf1;
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+.confirmation-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 @media (max-width: 880px) {
   .app-shell {
     padding: 16px 10px;

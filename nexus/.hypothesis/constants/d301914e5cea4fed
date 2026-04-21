@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/nexus/config.py
+# hypothesis_version: 6.151.9
+
+['0.5', '1.0', '10', '3', '30', '5', '50', 'CALENDAR_API_KEY', 'CALENDAR_API_TIMEOUT', 'CONFIDENCE_THRESHOLD', 'DATABASE_URL', 'GEMINI_API_KEY', 'JWT_SECRET', 'MAX_CONCURRENT_TASKS', 'MAX_RETRIES', 'NLP_PARSING_TIMEOUT', 'RETRY_BASE_DELAY', 'TOKEN_EXPIRY_MINUTES', 'sqlite:///', 'sqlite:///./nexus.db']

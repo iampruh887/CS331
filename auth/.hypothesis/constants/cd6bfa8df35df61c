@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/auth/database.py
+# hypothesis_version: 6.151.9
+
+['GENERAL', 'SELECT * FROM users', 'created_at', 'email', 'hashed_password', 'id', 'is_active', 'role', 'sqlite:///./', 'updated_at', 'utf-8']

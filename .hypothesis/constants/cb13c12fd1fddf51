@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/auth/models.py
+# hypothesis_version: 6.151.9
+
+['GENERAL', 'access_token', 'bearer', 'email', 'example', 'is_active', 'password', 'role', 'strongpassword123', 'token_type', 'user@example.com']

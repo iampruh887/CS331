@@ -1,0 +1,43 @@
+[
+  {
+    "diff_id": 1,
+    "timestamp": "2026-03-10T08:15:26.423481",
+    "user_id": "user123",
+    "action": "update_config",
+    "resource": "/etc/app.conf",
+    "diff": {
+      "before": {
+        "port": 8080,
+        "timeout": 30
+      },
+      "after": {
+        "port": 9090,
+        "timeout": 30
+      },
+      "diff_type": "modify"
+    },
+    "metadata": {},
+    "reverted": true,
+    "reverted_at": "2026-03-10T08:16:39.625532"
+  },
+  {
+    "diff_id": 2,
+    "timestamp": "2026-03-10T08:16:11.278986",
+    "user_id": "user123",
+    "action": "update_database",
+    "resource": "db_config.json",
+    "diff": {
+      "before": {
+        "host": "localhost",
+        "port": 5432
+      },
+      "after": {
+        "host": "192.168.1.100",
+        "port": 5432
+      },
+      "diff_type": "modify"
+    },
+    "metadata": {},
+    "reverted": false
+  }
+]

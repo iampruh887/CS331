@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/nexus/calendar_integration.py
+# hypothesis_version: 6.151.9
+
+['DATE_ORDER', 'Google Calendar', 'MDY', 'PREFER_DATES_FROM', 'TIMEZONE', 'UTC', 'Z', 'am', 'attendees', 'calendar', 'date', 'dateTime', 'day', 'description', 'email', 'end', 'friday', 'future', 'hours', 'id', 'in', 'items', 'method', 'minute', 'minutes', 'monday', 'next', 'overrides', 'pm', 'popup', 'primary', 'reminders', 'saturday', 'start', 'startTime', 'summary', 'sunday', 'thursday', 'timeZone', 'tomorrow', 'tuesday', 'useDefault', 'v3', 'wednesday']

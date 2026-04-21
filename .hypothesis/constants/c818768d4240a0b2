@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/model/rag_service.py
+# hypothesis_version: 6.151.9
+
+[0.0, 0.65, 500, '.csv', '.json', '.md', '.txt', 'all-MiniLM-L6-v2', 'chunk_id', 'confidence', 'context', 'docs', 'passages', 'path', 'reason', 'source', 'sources', 'text', 'used', 'utf-8']

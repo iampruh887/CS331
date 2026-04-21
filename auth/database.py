@@ -1,10 +1,18 @@
 """Database operations using SQLite for user management"""
 import sqlite3
 from typing import Dict, Optional
-from config import get_settings
-from auth import hash_password
+import bcrypt
+from auth.config import get_settings
 
 settings = get_settings()
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt."""
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 # Extract database file path from SQLite URL
 DB_PATH = settings.DATABASE_URL.replace("sqlite:///./", "")

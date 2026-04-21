@@ -2,14 +2,14 @@ from datetime import timedelta
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
-from models import UserCreate, UserLogin, User, Token, TokenData
-from auth import (
+from auth.models import UserCreate, UserLogin, User, Token, TokenData
+from auth.auth import (
     verify_password, 
     create_access_token, 
     get_current_user
 )
-from database import get_user, create_user, user_exists
-from config import get_settings
+from auth.database import get_user, create_user, user_exists
+from auth.config import get_settings
 
 app = FastAPI(title="Nexus Auth API", version="1.0.0")
 settings = get_settings()
