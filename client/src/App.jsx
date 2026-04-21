@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 const AUTH_API_BASE =
   import.meta.env.VITE_AUTH_API_BASE || "http://127.0.0.1:8000";
-const CHAT_API_BASE =
-  import.meta.env.VITE_CHAT_API_BASE || "http://127.0.0.1:8001";
+const NEXUS_API_BASE =
+  import.meta.env.VITE_NEXUS_API_BASE || "http://127.0.0.1:8002";
 
 const QUICK_INTENTS = [
   "Show current system metrics",
@@ -43,18 +43,27 @@ const maskSensitiveOutput = (text) => {
     .replace(/(api[_-]?key\s*[:=]\s*)([^\s]+)/gi, "$1[masked]");
 };
 
-const normalizeError = (error) => {
+  const normalizeError = (error) => {
   const message = error?.message || "Unknown error";
   const lower = message.toLowerCase();
 
   if (lower.includes("gemini_api_key")) {
-    return "Chat service is up but Gemini is not configured yet. Add GEMINI_API_KEY in chat/.env.";
+    return "NLP service is not configured. Add GEMINI_API_KEY in nexus/.env.";
   }
   if (lower.includes("failed to fetch") || lower.includes("network")) {
     return "A backend service is currently unavailable. Please try again in a few seconds.";
   }
   if (lower.includes("timed out")) {
     return "The request timed out. Please try a shorter prompt.";
+  }
+  if (lower.includes("unauthorized")) {
+    return "Your session has expired. Please sign in again.";
+  }
+  if (lower.includes("forbidden")) {
+    return "You don't have permission to perform this action.";
+  }
+  if (lower.includes("busy")) {
+    return "The system is currently busy. Please try again in a moment.";
   }
   return message;
 };
@@ -121,11 +130,14 @@ function App() {
 
   const [services, setServices] = useState({
     auth: "checking",
-    chat: "checking",
-    chatModel: "--",
+    nexus: "checking",
+    nexusModel: "--",
   });
 
   const [showScrollDown, setShowScrollDown] = useState(false);
+
+  const [confirmationPrompt, setConfirmationPrompt] = useState(null);
+  const [confirmationLoading, setConfirmationLoading] = useState(false);
 
   const messagesRef = useRef(null);
   const inputRef = useRef(null);
@@ -215,8 +227,8 @@ function App() {
   const refreshServiceHealth = async () => {
     const nextState = {
       auth: "down",
-      chat: "down",
-      chatModel: "--",
+      nexus: "down",
+      nexusModel: "--",
     };
 
     try {
@@ -227,12 +239,12 @@ function App() {
     }
 
     try {
-      const chatHealth = await requestJson(`${CHAT_API_BASE}/`, {}, 5000);
-      nextState.chat = "up";
-      nextState.chatModel = chatHealth.model || "--";
+      const nexusHealth = await requestJson(`${NEXUS_API_BASE}/health`, {}, 5000);
+      nextState.nexus = "up";
+      nextState.nexusModel = nexusHealth.model || "--";
     } catch {
-      nextState.chat = "down";
-      nextState.chatModel = "--";
+      nextState.nexus = "down";
+      nextState.nexusModel = "--";
     }
 
     setServices(nextState);
@@ -319,24 +331,6 @@ function App() {
       return;
     }
 
-    if (WRITE_ACTION_REGEX.test(text)) {
-      const approved = window.confirm(
-        "This looks like a write-action command. Continue with execution request?"
-      );
-      if (!approved) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: buildId(),
-            role: "system",
-            text: "Write-action request cancelled before execution.",
-            createdAt: new Date().toISOString(),
-          },
-        ]);
-        return;
-      }
-    }
-
     const userMessage = {
       id: buildId(),
       role: "user",
@@ -352,34 +346,54 @@ function App() {
 
     try {
       const data = await requestJson(
-        `${CHAT_API_BASE}/chat`,
+        `${NEXUS_API_BASE}/api/v1/command`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ message: text }),
+          body: JSON.stringify({ command: text }),
         },
         45000
       );
 
       const latencyMs = Math.round(performance.now() - startedAt);
-      const cleanedReply = maskSensitiveOutput(data.reply || "");
-      const assistantReply = cleanedReply
-        ? cleanedReply
-        : "I did not understand that command, please try rephrasing it.";
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: buildId(),
-          role: "assistant",
-          text: assistantReply,
-          createdAt: new Date().toISOString(),
-          latencyMs,
-        },
-      ]);
+      // Check if result is a confirmation prompt
+      if (data.result && data.result.prompt_id) {
+        // This is a confirmation prompt for a write action
+        setConfirmationPrompt(data.result);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: buildId(),
+            role: "assistant",
+            text: data.result.message,
+            createdAt: new Date().toISOString(),
+            latencyMs,
+            isConfirmation: true,
+          },
+        ]);
+      } else {
+        // This is a regular execution result
+        const output = data.result?.output || data.result || "Command executed.";
+        const cleanedReply = maskSensitiveOutput(output);
+        const assistantReply = cleanedReply
+          ? cleanedReply
+          : "I did not understand that command, please try rephrasing it.";
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: buildId(),
+            role: "assistant",
+            text: assistantReply,
+            createdAt: new Date().toISOString(),
+            latencyMs,
+          },
+        ]);
+      }
     } catch (error) {
       const fallbackMessage = normalizeError(error);
       setMessages((prev) => [
@@ -404,6 +418,59 @@ function App() {
     }
   };
 
+  const handleConfirmation = async (confirmed) => {
+    if (!confirmationPrompt || confirmationLoading) return;
+
+    setConfirmationLoading(true);
+
+    try {
+      const data = await requestJson(
+        `${NEXUS_API_BASE}/api/v1/confirm/${confirmationPrompt.prompt_id}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ confirmed }),
+        },
+        45000
+      );
+
+      const output = data.result?.output || "Action completed.";
+      const cleanedReply = maskSensitiveOutput(output);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: buildId(),
+          role: "assistant",
+          text: confirmed
+            ? cleanedReply
+            : "Action cancelled.",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+
+      setConfirmationPrompt(null);
+    } catch (error) {
+      const fallbackMessage = normalizeError(error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: buildId(),
+          role: "assistant",
+          text: fallbackMessage,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      setConfirmationPrompt(null);
+    } finally {
+      setConfirmationLoading(false);
+      inputRef.current?.focus();
+    }
+  };
+
   return (
     <div className="app-shell">
       <div className="ambient-glow" aria-hidden="true" />
@@ -422,10 +489,10 @@ function App() {
             <span className={`service-pill ${services.auth}`}>
               Auth API: {services.auth}
             </span>
-            <span className={`service-pill ${services.chat}`}>
-              Chat API: {services.chat}
+            <span className={`service-pill ${services.nexus}`}>
+              Nexus API: {services.nexus}
             </span>
-            <span className="service-pill neutral">Model: {services.chatModel}</span>
+            <span className="service-pill neutral">Model: {services.nexusModel}</span>
             <button className="refresh-btn" onClick={refreshServiceHealth}>
               Refresh Health
             </button>
@@ -552,8 +619,8 @@ function App() {
             <div className="chat-header">
               <h2>Task Chat Interface</h2>
               <p>
-                Read-only tasks execute immediately. Write-action commands require
-                confirmation before sending.
+                Submit commands using natural language. Write-action commands will
+                require confirmation before execution.
               </p>
             </div>
 
@@ -583,6 +650,30 @@ function App() {
               <button className="scroll-down-btn" onClick={scrollToBottom}>
                 Jump to latest
               </button>
+            )}
+
+            {confirmationPrompt && (
+              <div className="confirmation-dialog">
+                <div className="confirmation-content">
+                  <p className="confirmation-message">{confirmationPrompt.message}</p>
+                  <div className="confirmation-actions">
+                    <button
+                      className="secondary-btn"
+                      onClick={() => handleConfirmation(false)}
+                      disabled={confirmationLoading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="primary-btn"
+                      onClick={() => handleConfirmation(true)}
+                      disabled={confirmationLoading}
+                    >
+                      {confirmationLoading ? "Processing..." : "Confirm"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="composer">

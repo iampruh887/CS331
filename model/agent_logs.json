@@ -304,5 +304,11 @@
     "tool_used": "gettime",
     "user_input": "Hi could you get me the time?",
     "response": "The current time is 08:30:36 on Tuesday."
+  },
+  {
+    "timestamp": "2026-04-07T10:48:47.901695",
+    "tool_used": "get_system_metrics",
+    "user_input": "Hi, get me the system metrics",
+    "response": "{\"response\": \"The system metrics show that the CPU usage is currently at 25.6%, and memory usage is a bit higher at 81.2%. Disk space remains stable at 46.7% usage. Overall, the system is running, but the memory usage is getting quite high!\"}"
   }
 ]

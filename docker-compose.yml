@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  nexus-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexus-api
+    ports:
+      - "8000:8000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - TOKEN_EXPIRY=${TOKEN_EXPIRY:-3600}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./nexus_test.db}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CALENDAR_API_KEY=${CALENDAR_API_KEY}
+      - CONFIDENCE_THRESHOLD=${CONFIDENCE_THRESHOLD:-0.5}
+      - MAX_CONCURRENT_TASKS=${MAX_CONCURRENT_TASKS:-50}
+      - TASK_TIMEOUT_SECONDS=${TASK_TIMEOUT_SECONDS:-300}
+      - CONFIRMATION_PROMPT_EXPIRY_SECONDS=${CONFIRMATION_PROMPT_EXPIRY_SECONDS:-600}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=${PORT:-8000}
+      - DEBUG=${DEBUG:-False}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - RAG_SERVICE_URL=${RAG_SERVICE_URL:-http://rag-service:8001}
+      - CONTEXT_MAX_SIZE=${CONTEXT_MAX_SIZE:-3}
+      - CONTEXT_TTL_SECONDS=${CONTEXT_TTL_SECONDS:-3600}
+    volumes:
+      - ./nexus:/app/nexus
+      - ./auth:/app/auth
+      - ./scripts:/app/scripts
+      - ./nexus_test.db:/app/nexus_test.db
+    depends_on:
+      - rag-service
+    networks:
+      - nexus-network
+    command: sh -c "python nexus/init_db.py && uvicorn nexus.api:app --host 0.0.0.0 --port 8000 --reload"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  rag-service:
+    build:
+      context: ./model
+      dockerfile: Dockerfile
+    container_name: rag-service
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    volumes:
+      - ./model:/app/model
+      - ./model/docs:/app/model/docs
+    networks:
+      - nexus-network
+    command: python main.py
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  auth-service:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "8002:8002"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-your-secret-key-change-in-production}
+      - TOKEN_EXPIRY=${TOKEN_EXPIRY:-3600}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./auth_system.db}
+    volumes:
+      - ./auth:/app/auth
+      - ./auth_system.db:/app/auth_system.db
+    networks:
+      - nexus-network
+    command: uvicorn auth.main:app --host 0.0.0.0 --port 8002 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  nexus-network:
+    driver: bridge
+
+volumes:
+  nexus_db:
+  auth_db:

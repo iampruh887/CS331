@@ -110,23 +110,25 @@ TOOL_MAP = {
 }
 
 llm_model = LiteLlm(
-    model="ollama_chat/qwen2.5:latest",
+    model="ollama/gemma4:latest",
     api_base="http://localhost:11434",
-    temperature=0.1,
-    max_tokens=512,
+    temperature=0.3,
+    max_tokens=1024,
 )
 
 root_agent = Agent(
     name="assistant",
     model=llm_model,
     description="A helpful assistant with time and system monitoring tools.",
-    instruction="""You are a helpful AI assistant. You have access to two tools:
+    instruction="""You are a helpful AI assistant that provides direct, concise answers.
 
-1. gettime - call this for any question about the current time, date, or day of the week.
-2. get_system_metrics - call this for any question about CPU, memory, disk, or system performance.
+Available tools:
+- gettime: Returns current date, time, and day of week
+- get_system_metrics: Returns CPU, memory, disk usage, and system info
 
-When a tool is needed, call it and then reply naturally using the data it returns.
-Keep replies short and friendly.""",
+When the user asks about time or system metrics, use the appropriate tool and provide a clear, natural response based on the data.
+
+Always respond in a friendly, conversational tone. Keep answers brief and to the point.""",
     tools=[gettime, get_system_metrics],
 )
 
@@ -166,75 +168,118 @@ async def process_agent_turn(runner, session_id: str, user_id: str, user_msg):
     Returns (response_text, tools_used_list).
     """
     tools_used = []
-    MAX_TOOL_ROUNDS = 5
+    MAX_TOOL_ROUNDS = 3
     current_msg = user_msg
 
-    for _ in range(MAX_TOOL_ROUNDS):
+    for round_num in range(MAX_TOOL_ROUNDS):
         text_chunks = []
         native_tool_calls = []
 
-        async for event in runner.run_async(
-            session_id=session_id,
-            user_id=user_id,
-            new_message=current_msg,
-        ):
-            if not hasattr(event, "content") or not event.content:
-                continue
-            if not hasattr(event.content, "parts"):
-                continue
+        try:
+            async for event in runner.run_async(
+                session_id=session_id,
+                user_id=user_id,
+                new_message=current_msg,
+            ):
+                if not hasattr(event, "content") or not event.content:
+                    continue
+                if not hasattr(event.content, "parts"):
+                    continue
 
-            for part in event.content.parts:
-                if hasattr(part, "function_call") and part.function_call:
-                    fc = part.function_call
-                    fname = getattr(fc, "name", None)
-                    fargs = getattr(fc, "args", {}) or {}
-                    if fname and fname in TOOL_MAP:
-                        native_tool_calls.append((fname, fargs))
+                for part in event.content.parts:
+                    if hasattr(part, "function_call") and part.function_call:
+                        fc = part.function_call
+                        fname = getattr(fc, "name", None)
+                        fargs = getattr(fc, "args", {}) or {}
+                        if fname and fname in TOOL_MAP:
+                            # Only add if not already called
+                            if fname not in tools_used:
+                                native_tool_calls.append((fname, fargs))
 
-                if hasattr(part, "text") and part.text:
-                    text_chunks.append(part.text)
+                    if hasattr(part, "text") and part.text:
+                        text_chunks.append(part.text)
+        except Exception as e:
+            print(f"[DEBUG] Error in agent turn: {e}")
+            return f"I encountered an error: {str(e)}", tools_used
 
         full_text = "".join(text_chunks).strip()
+        
+        # Debug output
+        print(f"[DEBUG] Round {round_num}: Got {len(native_tool_calls)} unique tool calls")
+        if full_text:
+            print(f"[DEBUG] Text preview: {full_text[:150]}...")
 
         # Native function calls take priority
         if native_tool_calls:
             result_parts = []
             for fname, fargs in native_tool_calls:
-                if fname not in tools_used:
-                    tools_used.append(fname)
+                tools_used.append(fname)
                 tool_result = TOOL_MAP[fname](**fargs)
-                result_parts.append(f"{fname} returned:\n{tool_result}")
+                result_parts.append(tool_result)
+                print(f"[DEBUG] Executed tool: {fname}")
 
+            # Combine results and ask for natural language response
+            combined_result = "\n\n".join(result_parts)
             current_msg = types.Content(
                 role="user",
                 parts=[types.Part(text=(
-                    "Tool results:\n" + "\n\n".join(result_parts) +
-                    "\n\nNow give a short, natural language answer to the user."
+                    f"Here is the data:\n{combined_result}\n\n"
+                    "Please provide a brief, natural language summary of this information for the user. "
+                    "Do not call any more tools."
                 ))],
             )
             continue
 
         # Inline JSON tool call
-        if full_text:
+        if full_text and not tools_used:
             fname, fargs = _parse_inline_tool_call(full_text)
             if fname:
-                if fname not in tools_used:
-                    tools_used.append(fname)
+                tools_used.append(fname)
                 tool_result = TOOL_MAP[fname](**(fargs or {}))
+                print(f"[DEBUG] Executed inline tool: {fname}")
                 current_msg = types.Content(
                     role="user",
                     parts=[types.Part(text=(
-                        f"{fname} returned:\n{tool_result}\n\n"
-                        "Now give a short, natural language answer to the user."
+                        f"Here is the data:\n{tool_result}\n\n"
+                        "Please provide a brief, natural language summary of this information for the user. "
+                        "Do not call any more tools."
                     ))],
                 )
                 continue
 
-        # Real text answer
+        # Real text answer - check if it's not just JSON
         if full_text:
+            # If it looks like raw JSON, try to parse and format it
+            if full_text.startswith("{") and "status" in full_text:
+                try:
+                    data = json.loads(full_text)
+                    if "system" in data and "cpu" in data:
+                        # Format system metrics nicely
+                        return (
+                            f"System Status:\n"
+                            f"- Platform: {data['system']['platform']}\n"
+                            f"- CPU Usage: {data['cpu']['usage_percent']}%\n"
+                            f"- Memory: {data['memory']['used_gb']}GB / {data['memory']['total_gb']}GB "
+                            f"({data['memory']['usage_percent']}%)\n"
+                            f"- Disk: {data['disk']['used_gb']}GB / {data['disk']['total_gb']}GB "
+                            f"({data['disk']['usage_percent']}%)"
+                        ), tools_used
+                    elif "timestamp" in data and "date" in data:
+                        # Format time nicely
+                        return (
+                            f"Current time: {data['time']} on {data['day_of_week']}, {data['date']}"
+                        ), tools_used
+                except json.JSONDecodeError:
+                    pass
+            
+            # Return the text as-is
             return full_text, tools_used
 
         break
+
+    # If we got tool results but no natural response, format them ourselves
+    if tools_used and not full_text:
+        return "I retrieved the information but couldn't format a response. Please try again.", tools_used
 
     return "Sorry, I could not produce an answer.", tools_used
 

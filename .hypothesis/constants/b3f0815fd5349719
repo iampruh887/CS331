@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/nexus/run_database_init_tests.py
+# hypothesis_version: 6.151.9
+
+[0.5, '  ✓ PASSED', '***MASKED***', './nexus_test.db', '.db', '1.5', '=', 'CONFIDENCE_THRESHOLD', 'DATABASE_URL', 'GEMINI_API_KEY', 'JWT_SECRET', 'SELECT 1', 'Test pattern', '[]', '__main__', 'a', 'audit_logs', 'confirmation_prompts', 'created_at', 'email', 'error_logs', 'error_patterns', 'hashed_password', 'id', 'is_active', 'role', 'scripts', 'short', 'sqlite:///./test.db', 'test', 'test.*', 'test_key', 'test_pattern', 'users']

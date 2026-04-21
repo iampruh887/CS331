@@ -1,0 +1,4 @@
+# file: /home/dawn/Desktop/CS331/chat/chat_api.py
+# hypothesis_version: 6.151.9
+
+[0.6, 500, 502, 512, 4000, '*', ',', '.env', '/', '/chat', 'CHAT_ALLOWED_ORIGINS', 'Chatbot API', 'Content-Type', 'GEMINI_API_KEY', 'GEMINI_MODEL', 'GEMINI_SYSTEM_PROMPT', 'POST', 'POST /chat', 'application/json', 'candidates', 'chat', 'content', 'contents', 'endpoints', 'gemini-1.5-pro', 'generationConfig', 'ignore', 'maxOutputTokens', 'message', 'model', 'parts', 'role', 'system_instruction', 'temperature', 'text', 'user', 'utf-8']
