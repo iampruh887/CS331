@@ -44,6 +44,8 @@ class ChatResponse(BaseModel):
     reply: str
 
 
+import httpx
+
 def _extract_reply(api_response: dict) -> str:
     candidates = api_response.get("candidates") or []
     if not candidates:
@@ -56,13 +58,13 @@ def _extract_reply(api_response: dict) -> str:
     return "\n".join(text_parts).strip()
 
 
-def _generate_gemini_reply(message: str, api_key: str) -> str:
+async def _generate_gemini_reply(message: str, api_key: str) -> str:
     endpoint = (
         f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
         f"?key={api_key}"
     )
     payload = {
-        "system_instruction": {
+        "systemInstruction": {
             "parts": [{"text": GEMINI_SYSTEM_PROMPT}],
         },
         "contents": [
@@ -77,27 +79,23 @@ def _generate_gemini_reply(message: str, api_key: str) -> str:
         },
     }
 
-    req = request.Request(
-        endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-
     try:
-        with request.urlopen(req, timeout=45) as response:
-            body = response.read().decode("utf-8")
-            data = json.loads(body)
-    except error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="ignore")
+        # httpx uses a reasonable default timeout to prevent indefinite hangs.
+        # We set a 15-second connect timeout and 30-second read timeout.
+        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=10.0)) as client:
+            response = await client.post(endpoint, json=payload)
+            response.raise_for_status()
+            data = response.json()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text
         raise HTTPException(
             status_code=502,
-            detail=f"Gemini API error: {detail or exc.reason}",
+            detail=f"Gemini API error: {detail}",
         ) from exc
-    except error.URLError as exc:
+    except httpx.RequestError as exc:
         raise HTTPException(
             status_code=502,
-            detail=f"Gemini network error: {exc.reason}",
+            detail=f"Gemini network error: {str(exc)}",
         ) from exc
 
     reply = _extract_reply(data)
@@ -118,7 +116,7 @@ async def chat(req: ChatRequest):
             detail="GEMINI_API_KEY is not configured on the chat server",
         )
 
-    reply = await run_in_threadpool(_generate_gemini_reply, req.message, api_key)
+    reply = await _generate_gemini_reply(req.message, api_key)
     return ChatResponse(reply=reply)
 
 
